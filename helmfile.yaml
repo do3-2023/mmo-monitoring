@@ -1,0 +1,33 @@
+repositories:
+- name: bitnami
+  url: https://charts.bitnami.com/bitnami
+
+releases:
+- name: postgres
+  chart: bitnami/postgresql
+  version: 15.5.5
+  namespace: observability
+  set:
+  - name: auth.username
+    value: person
+  - name: auth.password
+    value: person
+  - name: auth.database
+    value: person
+  - name: primary.persistence.size
+    value: 1Gi
+  - name: global.storageClass
+    value: local-path
+
+- name: person
+  chart: ./helm/person
+  version: 0.1.0
+  namespace: observability
+  set:
+  - name: postgres.host
+    value: postgres-postgresql
+
+- name: frontend
+  chart: ./helm/frontend
+  version: 0.1.0
+  namespace: observability
