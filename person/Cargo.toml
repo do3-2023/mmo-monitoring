@@ -1,4 +1,21 @@
 [dependencies]
+axum = "0.6.20"
+axum-valid = "0.11.0"
+clap = {version = "4.4.8", features = ["derive", "env"]}
+regex = "1.10.2"
+serde = {version = "1.0.193", features = ["derive"]}
+serde_json = "1.0.108"
+sqlx = {version = "0.7.3", features = [
+  "runtime-tokio",
+  "tls-rustls",
+  "postgres",
+  "migrate"
+]}
+tokio = {version = "1.34.0", features = ["macros", "rt-multi-thread"]}
+tracing = "0.1.40"
+tracing-log = "0.2.0"
+tracing-subscriber = "0.3.18"
+validator = {version = "0.16.1", features = ["derive"]}
 
 [package]
 edition = "2021"
