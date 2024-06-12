@@ -16,5 +16,5 @@ compile:
     cargo build --release
 
 docker-build-all TAG: compile
-  docker build -t ghcr.io/do3-2023/observability/frontend:{{TAG}} -f frontend.Dockerfile .
-  docker build -t ghcr.io/do3-2023/observability/person:{{TAG}} -f person.Dockerfile .
+  docker build -t ghcr.io/do3-2023/mmo-monitoring/frontend:{{TAG}} -f frontend.Dockerfile . --push
+  docker build -t ghcr.io/do3-2023/mmo-monitoring/person:{{TAG}} -f person.Dockerfile . --push
