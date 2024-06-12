@@ -5,12 +5,15 @@ default:
 run:
   cargo run
 
-compile:
+compile DATABASE_URL = "postgresql://postgres:postgres@localhost:5432/person":
   #!/usr/bin/env bash
+  cargo sqlx prepare --workspace
+  sqlx migrate run --database-url {{DATABASE_URL}} --source=person/migrations
   docker run --rm \
     -v cargo-cache:/root/.cargo \
     -v $PWD:/volume \
-    -e SQLX_OFFLINE=true \
+    --network host \
+    -e DATABASE_URL={{DATABASE_URL}} \
     -w /volume \
     -t clux/muslrust \
     cargo build --release
