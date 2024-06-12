@@ -129,6 +129,9 @@ async fn main() -> Result<(), sqlx::Error> {
         ))
         .await?;
 
+    println!("running migrations");
+    sqlx::migrate!("./migrations").run(&pool).await?;
+
     let app_state = AppState::new(pool);
     let router = Router::new()
         .route("/persons", get(get_persons_handler))
