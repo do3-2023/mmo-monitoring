@@ -8,6 +8,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     services:
       postgres:
         image: postgres:16
@@ -49,6 +52,8 @@ jobs:
 
   update-versions:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     needs:
     - build
     steps:
@@ -101,9 +106,16 @@ jobs:
         incremented_version_frontend: ${{ steps.incremented_version_frontend.outputs.incremented_version_frontend }}
         incremented_version_backend: ${{ steps.incremented_version_backend.outputs.incremented_version_backend }}
       run: |
-        yq eval -i '.version = ${{ steps.incremented_version_frontend.outputs.incremented_version_frontend }}' helm/frontend/Chart.yaml
-        yq eval -i '.appVersion = ${{ github.ref_name }}' helm/frontend/Chart.yaml
-        yq eval -i '.version = ${{ steps.incremented_version_frontend.outputs.incremented_version_frontend }}' helm/person/Chart.yaml
-        yq eval -i '.appVersion = ${{ github.ref_name }}' helm/person/Chart.yaml
-        yq eval -i '.releases[1].version = ${{ github.ref_name }}' helmfile.yaml
-        yq eval -i '.releases[2].version = ${{ github.ref_name }}' helmfile.yaml
+        yq eval -i '.version = "${{ steps.incremented_version_frontend.outputs.incremented_version_frontend }}"' helm/frontend/Chart.yaml
+        yq eval -i '.appVersion = "${{ github.ref_name }}"' helm/frontend/Chart.yaml
+        yq eval -i '.version = "${{ steps.incremented_version_frontend.outputs.incremented_version_frontend }}"' helm/person/Chart.yaml
+        yq eval -i '.appVersion = "${{ github.ref_name }}"' helm/person/Chart.yaml
+        yq eval -i '.releases[1].version = "${{ github.ref_name }}"' helmfile.yaml
+        yq eval -i '.releases[2].version = "${{ github.ref_name }}"' helmfile.yaml
+    - name: Commit and push updated versions
+      run: |
+        git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "GitHub Actions"
+        git add helm/frontend/Chart.yaml helm/person/Chart.yaml helmfile.yaml
+        git commit -m "bump(charts): ${{ github.ref_name }}"
+        git push -u origin main
