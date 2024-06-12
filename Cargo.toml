@@ -1,0 +1,6 @@
+[workspace]
+members = [
+  "frontend",
+  "person"
+]
+resolver = "2"
