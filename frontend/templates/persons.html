@@ -1,0 +1,38 @@
+<!-- prettier-ignore -->
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<h1>People</h1>
+<div class="overflow-scroll" id="persons">
+  {% for person in persons %}
+  <div class="card mt-3 counter-card">
+    <div class="card-body">
+      <h2 class="card-title">{{ person.last_name }}</h2>
+      <h3 class="card-text">{{ person.phone_number }}</h3>
+      <p class="card-text">{{ person.location }}</p>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+<h2>Add New Person</h2>
+<div class="overflow-scroll">
+  <form hx-post="/persons" hx-target="#persons" hx-swap="beforeend" hx-ext="submitjson" class="form-group"
+    hx-headers='{"Content-Type": "application/json"}' hx-trigger="submit">
+    <div>
+      <label for="last_name">Last Name</label>
+      <input type="text" id="last_name" name="last_name" class="form-control" required>
+    </div>
+    <div class="form-group">
+      <label for="phone_number">Phone Number</label>
+      <input type="text" id="phone_number" name="phone_number" class="form-control" required>
+    </div>
+    <div class="form-group">
+      <label for="location">Location</label>
+      <input type="text" id="location" name="location" class="form-control" required>
+    </div>
+    <button type="submit" class="btn btn-primary mt-2">Add Person</button>
+  </form>
+</div>
+{% endblock %}
