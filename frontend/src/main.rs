@@ -111,6 +111,7 @@ async fn main() {
         .route("/health/ready", get(ready))
         .with_state(args.clone());
 
+    println!("listening on {}:{}", args.address, args.port);
     let socker_addr: SocketAddr = format!("{}:{}", args.address, args.port).parse().unwrap();
     Server::bind(&socker_addr)
         .serve(router.into_make_service())

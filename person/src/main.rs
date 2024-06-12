@@ -113,6 +113,10 @@ async fn ready(State(state): State<AppState>) -> impl IntoResponse {
 async fn main() -> Result<(), sqlx::Error> {
     let args = Args::parse();
 
+    println!(
+        "connecting to postgres at {}:{}",
+        args.postgres_host, args.postgres_port
+    );
     let pool = PgPoolOptions::new()
         .max_connections(5)
         .connect(&format!(
@@ -133,6 +137,7 @@ async fn main() -> Result<(), sqlx::Error> {
         .route("/health/ready", get(ready))
         .with_state(app_state);
 
+    println!("listening on {}:{}", args.address, args.port);
     let socket_addr: SocketAddr = format!("{}:{}", args.address, args.port).parse().unwrap();
     axum::Server::bind(&socket_addr)
         .serve(router.into_make_service())
