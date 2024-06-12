@@ -17,6 +17,10 @@ tracing-log = "0.2.0"
 tracing-subscriber = "0.3.18"
 validator = {version = "0.16.1", features = ["derive"]}
 
+[lib]
+name = "person"
+path = "src/person.rs"
+
 [package]
 edition = "2021"
 name = "person"

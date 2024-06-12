@@ -6,7 +6,7 @@ use axum::{
     Json, Router,
 };
 use clap::Parser;
-use serde::{Deserialize, Serialize};
+use person::{CreatePersonDto, Person};
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use std::net::SocketAddr;
 
@@ -53,15 +53,7 @@ struct Args {
     pub postgres_dbname: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-struct Person {
-    id: i32,
-    last_name: String,
-    phone_number: String,
-    location: String,
-}
-
-async fn create_person(pool: &PgPool, person: Person) -> Result<Person, sqlx::Error> {
+async fn create_person(pool: &PgPool, person: CreatePersonDto) -> Result<Person, sqlx::Error> {
     let person = sqlx::query_as!(
         Person,
         "INSERT INTO person (last_name, phone_number, location) VALUES ($1, $2, $3) RETURNING *",
@@ -95,7 +87,7 @@ async fn get_persons_handler(
 
 async fn create_person_handler(
     State(state): State<AppState>,
-    Json(person): Json<Person>,
+    Json(person): Json<CreatePersonDto>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     match create_person(&state.pool, person).await {
         Ok(person) => Ok((StatusCode::CREATED, Json(person))),
@@ -103,6 +95,17 @@ async fn create_person_handler(
             StatusCode::INTERNAL_SERVER_ERROR,
             "Internal Server Error".to_string(),
         )),
+    }
+}
+
+async fn live() -> impl IntoResponse {
+    StatusCode::OK
+}
+
+async fn ready(State(state): State<AppState>) -> impl IntoResponse {
+    match sqlx::query("SELECT 1").execute(&state.pool).await {
+        Ok(_) => StatusCode::OK,
+        Err(_) => StatusCode::INTERNAL_SERVER_ERROR,
     }
 }
 
@@ -126,6 +129,8 @@ async fn main() -> Result<(), sqlx::Error> {
     let router = Router::new()
         .route("/persons", get(get_persons_handler))
         .route("/persons", post(create_person_handler))
+        .route("/health/live", get(live))
+        .route("/health/ready", get(ready))
         .with_state(app_state);
 
     let socket_addr: SocketAddr = format!("{}:{}", args.address, args.port).parse().unwrap();
