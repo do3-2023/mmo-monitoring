@@ -1,0 +1,2 @@
+postgres:
+  host: postgres-postgresql

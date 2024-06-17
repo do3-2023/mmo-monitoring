@@ -1,0 +1,24 @@
+httpRoute:
+  enabled: true
+  parentRefs:
+  - name: default-gw
+    namespace: kube-system
+    sectionName: https-0
+  hostnames:
+  - monitoring.moreiradj.net
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    filters:
+    - type: ResponseHeaderModifier
+      responseHeaderModifier:
+        add:
+        - name: PROTOCOL
+          value: HTTPS-Secure
+    - type: RequestHeaderModifier
+      requestHeaderModifier:
+        add:
+        - name: PROTOCOL
+          value: HTTPS-Secure

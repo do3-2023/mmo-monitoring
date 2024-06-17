@@ -20,14 +20,15 @@ releases:
     value: local-path
 
 - name: person
-  chart: ./helm/person
+  chart: ./person
   version: 0.1.0
   namespace: observability
-  set:
-  - name: postgres.host
-    value: postgres-postgresql
+  values:
+  - ./person.yaml
 
 - name: frontend
-  chart: ./helm/frontend
+  chart: ./frontend
   version: 0.1.0
   namespace: observability
+  values:
+  - ./frontend.yaml
