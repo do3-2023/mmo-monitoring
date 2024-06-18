@@ -24,4 +24,4 @@ path = "src/person.rs"
 [package]
 edition = "2021"
 name = "person"
-version = "0.1.0"
+version = "0.1.1"
