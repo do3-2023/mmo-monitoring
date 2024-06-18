@@ -11,7 +11,12 @@
     <div class="card-body">
       <h2 class="card-title">{{ person.last_name }}</h2>
       <h3 class="card-text">{{ person.phone_number }}</h3>
-      <p class="card-text">{{ person.location }}</p>
+      {% match person.location %}
+      {% when Some with (loc) %}
+        <p class="card-text">{{ loc }}</p>
+      {% else %}
+        <p class="card-text">No location</p>
+    {% endmatch %}
     </div>
   </div>
   {% endfor %}
@@ -27,10 +32,6 @@
     <div class="form-group">
       <label for="phone_number">Phone Number</label>
       <input type="text" id="phone_number" name="phone_number" class="form-control" required>
-    </div>
-    <div class="form-group">
-      <label for="location">Location</label>
-      <input type="text" id="location" name="location" class="form-control" required>
     </div>
     <button type="submit" class="btn btn-primary mt-2">Add Person</button>
   </form>
