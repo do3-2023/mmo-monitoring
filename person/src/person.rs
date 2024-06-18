@@ -12,5 +12,6 @@ pub struct Person {
     pub id: i32,
     pub last_name: String,
     pub phone_number: String,
+    #[serde(default)]
     pub location: String,
 }
