@@ -2,11 +2,5 @@
   <div class="card-body">
     <h2 class="card-title">{{ person.last_name }}</h2>
     <h3 class="card-text">{{ person.phone_number }}</h3>
-    {% match person.location %}
-      {% when Some with (loc) %}
-        <p class="card-text">{{ loc }}</p>
-      {% else %}
-        <p class="card-text">No location</p>
-    {% endmatch %}
   </div>
 </div>

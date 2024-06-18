@@ -56,7 +56,7 @@ struct Args {
 async fn create_person(pool: &PgPool, person: CreatePersonDto) -> Result<Person, sqlx::Error> {
     let person = sqlx::query_as!(
         Person,
-        "INSERT INTO person (last_name, phone_number) VALUES ($1, $2) RETURNING *",
+        "INSERT INTO person (last_name, phone_number) VALUES ($1, $2) RETURNING id, last_name, phone_number",
         person.last_name,
         person.phone_number,
     )
@@ -66,12 +66,9 @@ async fn create_person(pool: &PgPool, person: CreatePersonDto) -> Result<Person,
 }
 
 async fn list_persons(pool: &PgPool) -> Result<Vec<Person>, sqlx::Error> {
-    let persons = sqlx::query_as!(
-        Person,
-        "SELECT id, last_name, phone_number, location FROM person"
-    )
-    .fetch_all(pool)
-    .await?;
+    let persons = sqlx::query_as!(Person, "SELECT id, last_name, phone_number FROM person")
+        .fetch_all(pool)
+        .await?;
     Ok(persons)
 }
 
