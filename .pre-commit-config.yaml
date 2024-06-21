@@ -24,7 +24,14 @@ repos:
   rev: v1.0
   hooks:
   - id: fmt
+    args: [--manifest-path, person/Cargo.toml]
   - id: cargo-check
-    args: [--all-features]
+    args: [--all-features, --manifest-path, person/Cargo.toml]
   - id: clippy
-    args: [--all-features, --tests, --, -D, warnings]
+    args: [--all-features, --tests, --, -D, warnings, --manifest-path, person/Cargo.toml]
+  - id: fmt
+    args: [--manifest-path, person/Cargo.toml]
+  - id: cargo-check
+    args: [--all-features, --manifest-path, person/Cargo.toml]
+  - id: clippy
+    args: [--all-features, --tests, --, -D, warnings, --manifest-path, person/Cargo.toml]

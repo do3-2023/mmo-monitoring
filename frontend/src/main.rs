@@ -1,12 +1,10 @@
-use std::net::SocketAddr;
-
 use askama::Template;
 use axum::{
     extract::State,
     http::StatusCode,
     response::IntoResponse,
     routing::{get, post},
-    Json, Router, Server,
+    Json, Router,
 };
 use clap::Parser;
 use html_template::HtmlTemplate;
@@ -58,18 +56,23 @@ async fn create_person(
     Ok(result)
 }
 
-async fn fetch_persons(person_address: String) -> Vec<Person> {
+async fn fetch_persons(person_address: String) -> Result<Vec<Person>, reqwest::Error> {
     reqwest::get(&format!("{}/persons", person_address))
-        .await
-        .unwrap()
+        .await?
         .json::<Vec<Person>>()
         .await
-        .unwrap()
 }
 
 async fn get_persons_handler(State(state): State<Args>) -> impl IntoResponse {
+    let persons = match fetch_persons(state.person_url.clone()).await {
+        Ok(persons) => persons,
+        Err(e) => {
+            println!("Error fetching persons: {:?}", e);
+            vec![]
+        }
+    };
     let template = PersonsTemplate {
-        persons: fetch_persons(state.person_url.clone()).await,
+        persons,
         page_title: "Person".to_string(),
     };
 
@@ -100,7 +103,9 @@ async fn ready(State(state): State<Args>) -> impl IntoResponse {
     }
 }
 
-#[tokio::main]
+use tokio::net::TcpListener;
+
+#[tokio::main(flavor = "current_thread")]
 async fn main() {
     let args = Args::parse();
 
@@ -111,9 +116,12 @@ async fn main() {
         .route("/health/ready", get(ready))
         .with_state(args.clone());
 
-    println!("listening on {}:{}", args.address, args.port);
-    let socker_addr: SocketAddr = format!("{}:{}", args.address, args.port).parse().unwrap();
-    Server::bind(&socker_addr)
+    // run it
+    let addr = format!("{}:{}", args.address, args.port);
+    let tcp_listener = TcpListener::bind(addr.clone()).await.unwrap();
+    println!("listening on {}", addr);
+    axum::Server::from_tcp(tcp_listener.into_std().unwrap())
+        .unwrap()
         .serve(router.into_make_service())
         .await
         .unwrap();

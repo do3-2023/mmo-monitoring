@@ -1,0 +1,14 @@
+check:
+  RUSTFLAGS="--cfg wasmedge --cfg tokio_unstable" cargo check --target wasm32-wasi
+
+clippy:
+  RUSTFLAGS="--cfg wasmedge --cfg tokio_unstable" cargo clippy --target wasm32-wasi
+
+compile:
+  RUSTFLAGS="--cfg wasmedge --cfg tokio_unstable" cargo build --target wasm32-wasi --release
+
+run: compile
+  wasmedge target/wasm32-wasi/release/frontend.wasm --address=0.0.0.0 --port=3333 --person-url=http://localhost:3000
+
+docker-build TAG: compile
+  docker build -t ghcr.io/do3-2023/mmo-monitoring/frontend:{{TAG}} . --push

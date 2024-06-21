@@ -1,0 +1,2 @@
+docker-build TAG:
+  docker build -t ghcr.io/do3-2023/mmo-monitoring/person-migrate:{{TAG}} . --push

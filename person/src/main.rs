@@ -1,22 +1,17 @@
-use axum::{
-    extract::State,
-    http::StatusCode,
-    response::IntoResponse,
-    routing::{get, post},
-    Json, Router,
-};
+use axum::{extract::State, http::StatusCode, response::IntoResponse, routing::get, Json, Router};
 use clap::Parser;
+use mysql::{Pool, PooledConn};
 use person::{CreatePersonDto, Person};
-use sqlx::{postgres::PgPoolOptions, PgPool};
-use std::net::SocketAddr;
+
+use mysql::prelude::Queryable;
 
 #[derive(Debug, Clone)]
 struct AppState {
-    pub pool: PgPool,
+    pub pool: Pool,
 }
 
 impl AppState {
-    pub fn new(pool: PgPool) -> Self {
+    pub fn new(pool: Pool) -> Self {
         Self { pool }
     }
 }
@@ -32,56 +27,87 @@ struct Args {
     #[clap(long, env)]
     pub port: u16,
 
-    /// The postgres database host
+    /// The mysql database host
     #[clap(long, env)]
-    pub postgres_host: String,
+    pub mysql_host: String,
 
-    /// The postgres database port
+    /// The mysql database port
     #[clap(long, env)]
-    pub postgres_port: u16,
+    pub mysql_port: u16,
 
-    /// The postgres database user
+    /// The mysql database user
     #[clap(long, env)]
-    pub postgres_user: String,
+    pub mysql_user: String,
 
-    /// The postgres database password
+    /// The mysql database password
     #[clap(long, env)]
-    pub postgres_password: String,
+    pub mysql_password: String,
 
-    /// The postgres database name
+    /// The mysql database name
     #[clap(long, env)]
-    pub postgres_dbname: String,
+    pub mysql_dbname: String,
 }
 
-async fn create_person(pool: &PgPool, person: CreatePersonDto) -> Result<Person, sqlx::Error> {
-    let person = sqlx::query_as!(
-        Person,
-        "INSERT INTO person (last_name, phone_number, location) VALUES ($1, $2, $3) RETURNING *",
-        person.last_name,
-        person.phone_number,
-        person.location,
+#[derive(Debug, Clone)]
+struct PersonError {
+    message: String,
+}
+
+impl PersonError {
+    fn new(message: &str) -> Self {
+        Self {
+            message: message.to_string(),
+        }
+    }
+}
+
+async fn create_person(
+    conn: &mut PooledConn,
+    person: CreatePersonDto,
+) -> Result<Person, PersonError> {
+    let query = "INSERT INTO person (last_name, phone_number, location)
+        VALUES (:last_name, :phone_number, :location)";
+    conn.exec_drop(
+        query,
+        (&person.last_name, &person.phone_number, &person.location),
     )
-    .fetch_one(pool)
-    .await?;
-    Ok(person)
+    .map_err(|e| PersonError::new(&format!("Failed to run insert query: {}", e)))?;
+
+    Ok(Person {
+        id: 0,
+        last_name: person.last_name,
+        phone_number: person.phone_number,
+        location: person.location,
+    })
 }
 
-async fn list_persons(pool: &PgPool) -> Result<Vec<Person>, sqlx::Error> {
-    let persons = sqlx::query_as!(Person, "SELECT * FROM person")
-        .fetch_all(pool)
-        .await?;
+async fn list_persons(conn: &mut PooledConn) -> Result<Vec<Person>, PersonError> {
+    let query = "SELECT id, last_name, phone_number, location FROM person";
+    let persons = conn
+        .query_map(query, |(id, last_name, phone_number, location)| Person {
+            id,
+            last_name,
+            phone_number,
+            location,
+        })
+        .map_err(|e| PersonError::new(&format!("Failed to run select query: {}", e)))?;
+
     Ok(persons)
 }
 
 async fn get_persons_handler(
     State(state): State<AppState>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
-    match list_persons(&state.pool).await {
+    let conn = &mut state.pool.get_conn().unwrap();
+    match list_persons(conn).await {
         Ok(persons) => Ok((StatusCode::OK, Json(persons))),
-        Err(_) => Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Internal Server Error".to_string(),
-        )),
+        Err(e) => {
+            println!("Error: {}", e.message);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal Server Error".to_string(),
+            ))
+        }
     }
 }
 
@@ -89,12 +115,16 @@ async fn create_person_handler(
     State(state): State<AppState>,
     Json(person): Json<CreatePersonDto>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
-    match create_person(&state.pool, person).await {
+    let conn = &mut state.pool.get_conn().unwrap();
+    match create_person(conn, person).await {
         Ok(person) => Ok((StatusCode::CREATED, Json(person))),
-        Err(_) => Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Internal Server Error".to_string(),
-        )),
+        Err(e) => {
+            println!("Error: {}", e.message);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal Server Error".to_string(),
+            ))
+        }
     }
 }
 
@@ -103,49 +133,43 @@ async fn live() -> impl IntoResponse {
 }
 
 async fn ready(State(state): State<AppState>) -> impl IntoResponse {
-    match sqlx::query("SELECT 1").execute(&state.pool).await {
+    let conn = &mut state.pool.get_conn().unwrap();
+    let query = "SELECT 1";
+    match conn.query_drop(query) {
         Ok(_) => StatusCode::OK,
         Err(_) => StatusCode::INTERNAL_SERVER_ERROR,
     }
 }
 
-#[tokio::main]
-async fn main() -> Result<(), sqlx::Error> {
+use tokio::net::TcpListener;
+
+#[tokio::main(flavor = "current_thread")]
+async fn main() {
     let args = Args::parse();
 
-    println!(
-        "connecting to postgres at {}:{}",
-        args.postgres_host, args.postgres_port
+    let url = format!(
+        "mysql://{}:{}@{}:{}/{}",
+        args.mysql_user, args.mysql_password, args.mysql_host, args.mysql_port, args.mysql_dbname
     );
-    let pool = PgPoolOptions::new()
-        .max_connections(5)
-        .connect(&format!(
-            "postgres://{}:{}@{}:{}/{}",
-            args.postgres_user,
-            args.postgres_password,
-            args.postgres_host,
-            args.postgres_port,
-            args.postgres_dbname,
-        ))
-        .await?;
+    let pool = Pool::new(url.as_str()).unwrap();
 
-    println!("running migrations");
-    sqlx::migrate!("./migrations").run(&pool).await?;
-
-    let app_state = AppState::new(pool);
-    let router = Router::new()
-        .route("/persons", get(get_persons_handler))
-        .route("/persons", post(create_person_handler))
+    // build our application with a route
+    let app = Router::new()
         .route("/health/live", get(live))
         .route("/health/ready", get(ready))
-        .with_state(app_state);
+        .route(
+            "/persons",
+            get(get_persons_handler).post(create_person_handler),
+        )
+        .with_state(AppState::new(pool));
 
-    println!("listening on {}:{}", args.address, args.port);
-    let socket_addr: SocketAddr = format!("{}:{}", args.address, args.port).parse().unwrap();
-    axum::Server::bind(&socket_addr)
-        .serve(router.into_make_service())
+    // run it
+    let addr = format!("{}:{}", args.address, args.port);
+    let tcp_listener = TcpListener::bind(addr.clone()).await.unwrap();
+    println!("listening on {}", addr);
+    axum::Server::from_tcp(tcp_listener.into_std().unwrap())
+        .unwrap()
+        .serve(app.into_make_service())
         .await
         .unwrap();
-
-    Ok(())
 }
